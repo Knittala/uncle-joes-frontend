@@ -37,6 +37,6 @@ This frontend allows customers to:
 ## Project Status
 Currently in progress, adjusting based on requirements
 
-## Team
+## Team Members
 - Frontend: Knittala, AlexaGonzalesTuesta, Kageby (Dharma S), MaxChen2024 (Max)
 
