@@ -38,5 +38,5 @@ This frontend allows customers to:
 Currently in progress, adjusting based on requirements
 
 ## Team
-- Frontend: Knittala, AlexaGonzalesTuesta
+- Frontend: Knittala, AlexaGonzalesTuesta, Kageby (Dharma S)
 
