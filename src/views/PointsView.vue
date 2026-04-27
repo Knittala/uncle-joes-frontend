@@ -59,7 +59,8 @@ export default {
       return;
     }
     try {
-      this.summary = await fetchJSON(`/members/${encodeURIComponent(auth.user.member_id)}/points`);
+      const memberId = auth.user.id || auth.user.member_id;
+      this.summary = await fetchJSON(`/points/members/${encodeURIComponent(memberId)}`);
     } catch (e) {
       this.error = e.message;
     } finally {

@@ -75,9 +75,11 @@ export default {
           })
         });
         auth.setUser({
-          member_id: data.member_id,
+          id: data.id,
+          member_id: data.id,
           first_name: data.first_name || (data.name || '').split(' ')[0] || 'Member',
           last_name: data.last_name || '',
+          name: data.name || '',
           email: data.email,
           home_store: data.home_store || null
         });

@@ -17,7 +17,7 @@
       </div>
       <div class="account-card">
         <div class="account-card-label">Member ID</div>
-        <div class="account-card-value account-card-muted">{{ user.member_id }}</div>
+        <div class="account-card-value account-card-muted">{{ user.id || user.member_id }}</div>
       </div>
     </div>
 

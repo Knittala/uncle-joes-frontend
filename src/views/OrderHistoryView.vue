@@ -85,7 +85,8 @@ export default {
       return;
     }
     try {
-      const data = await fetchJSON(`/orders/member/${encodeURIComponent(auth.user.member_id)}?limit=200`);
+      const memberId = auth.user.id || auth.user.member_id;
+      const data = await fetchJSON(`/order_history/members/${encodeURIComponent(memberId)}?limit=200`);
       this.orders = data.orders || [];
     } catch (e) {
       this.error = e.message;

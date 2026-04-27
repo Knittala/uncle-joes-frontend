@@ -84,7 +84,7 @@ export default {
   },
   async mounted() {
     try {
-      this.order = await fetchJSON(`/orders/${this.orderId}`);
+      this.order = await fetchJSON(`/receipt/orders/${this.orderId}`);
     } catch (e) {
       this.error = e.message;
     } finally {

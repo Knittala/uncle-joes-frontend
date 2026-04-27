@@ -125,7 +125,7 @@ export default {
   },
   async mounted() {
     try {
-      const data = await fetchJSON('/menu');
+      const data = await fetchJSON('/filter/menu_items');
       this.items = Array.isArray(data) ? data : (data.results || []);
     } catch (e) {
       this.error = e.message;
