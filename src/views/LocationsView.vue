@@ -158,12 +158,37 @@ export default {
       this.openOnly = false;
       this.loadLocations();
     },
+    formatTime(value) {
+      if (value === null || value === undefined || value === '') return null;
+
+      const num = Number(value);
+      if (Number.isNaN(num)) return value;
+
+      const hours = Math.floor(num / 100);
+      const minutes = num % 100;
+
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHour = hours % 12 || 12;
+      const displayMinutes = String(minutes).padStart(2, '0');
+
+      return `${displayHour}:${displayMinutes} ${period}`;
+    },
+
     formatHours(loc, key) {
       const open = loc[`hours_${key}_open`];
       const close = loc[`hours_${key}_close`];
-      if (!open && !close) return 'Closed';
-      if (!open || !close) return '—';
-      return `${open} – ${close}`;
+
+      if ((open === null || open === undefined || open === '') &&
+          (close === null || close === undefined || close === '')) {
+        return 'Closed';
+      }
+
+      if (open === null || open === undefined || open === '' ||
+          close === null || close === undefined || close === '') {
+        return '—';
+      }
+
+      return `${this.formatTime(open)} – ${this.formatTime(close)}`;
     }
   }
 };
