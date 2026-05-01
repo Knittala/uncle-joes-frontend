@@ -66,6 +66,7 @@ export default {
   methods: {
     signOut() {
       auth.clear();
+      cart.clear();
       this.$router.push('/');
     }
   }
