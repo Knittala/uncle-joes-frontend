@@ -37,18 +37,29 @@
       </button>
     </div>
 
+    <div class="toolbar toolbar-sort">
+      <div class="toolbar-group">
+        <label for="sort-by">Sort by</label>
+        <select id="sort-by" v-model="sortBy">
+          <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+      </div>
+    </div>
+
     <div v-if="loading" class="status-note">Loading locations...</div>
     <div v-else-if="error" class="status-note status-error">{{ error }}</div>
-    <div v-else-if="!locations.length" class="status-note">
+    <div v-else-if="!sortedLocations.length" class="status-note">
       No locations match your filters. Try broadening your search.
     </div>
 
     <div v-else>
       <div class="results-bar">
-        Showing {{ locations.length }} location<span v-if="locations.length !== 1">s</span>
+        Showing {{ sortedLocations.length }} location<span v-if="sortedLocations.length !== 1">s</span>
       </div>
       <div class="location-grid">
-        <article v-for="loc in locations" :key="loc.id" class="location-card">
+        <article v-for="loc in sortedLocations" :key="loc.id" class="location-card">
           <header class="location-head">
             <h3>{{ loc.city }}, {{ loc.state }}</h3>
             <span class="status-pill" :class="loc.open_for_business ? 'status-open' : 'status-closed'">
@@ -111,6 +122,33 @@ const DAYS = [
   { key: 'sunday',    label: 'Sun' }
 ];
 
+const DEFAULT_SORT = 'city_asc';
+const SORT_OPTIONS = [
+  { value: 'city_asc',  label: 'City: A–Z' },
+  { value: 'city_desc', label: 'City: Z–A' }
+];
+
+// Case-sensitive locale compare. Uppercase letters sort before lowercase
+// in standard locale order, so "Austin" precedes "austin".
+function compareStrings(a, b) {
+  return (a || '').localeCompare(b || '');
+}
+
+// Stable, deterministic comparator: city, then state, then street address.
+// Returns a comparator function for the given direction.
+function makeCityComparator(direction) {
+  const dir = direction === 'desc' ? -1 : 1;
+  return (a, b) => {
+    const cityCmp = compareStrings(a.city, b.city);
+    if (cityCmp !== 0) return cityCmp * dir;
+    // Ties break on state, then address — these stay ascending so that
+    // even in Z–A mode, ties within a city read naturally.
+    const stateCmp = compareStrings(a.state, b.state);
+    if (stateCmp !== 0) return stateCmp;
+    return compareStrings(a.address_one, b.address_one);
+  };
+}
+
 export default {
   name: 'LocationsView',
   data() {
@@ -121,13 +159,26 @@ export default {
       selectedState: '',
       cityQuery: '',
       openOnly: false,
+      sortBy: DEFAULT_SORT,
       states: US_STATES,
-      days: DAYS
+      days: DAYS,
+      sortOptions: SORT_OPTIONS
     };
   },
   computed: {
     hasActiveFilters() {
-      return !!(this.selectedState || this.cityQuery || this.openOnly);
+      return !!(
+        this.selectedState ||
+        this.cityQuery ||
+        this.openOnly ||
+        this.sortBy !== DEFAULT_SORT
+      );
+    },
+    sortedLocations() {
+      // Copy the array so we don't mutate the source from the API.
+      const copy = this.locations.slice();
+      const direction = this.sortBy === 'city_desc' ? 'desc' : 'asc';
+      return copy.sort(makeCityComparator(direction));
     }
   },
   async mounted() {
@@ -156,45 +207,24 @@ export default {
       this.selectedState = '';
       this.cityQuery = '';
       this.openOnly = false;
+      this.sortBy = DEFAULT_SORT;
       this.loadLocations();
     },
-    formatTime(value) {
-      if (value === null || value === undefined || value === '') return null;
-
-      const num = Number(value);
-      if (Number.isNaN(num)) return value;
-
-      const hours = Math.floor(num / 100);
-      const minutes = num % 100;
-
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHour = hours % 12 || 12;
-      const displayMinutes = String(minutes).padStart(2, '0');
-
-      return `${displayHour}:${displayMinutes} ${period}`;
-    },
-
     formatHours(loc, key) {
       const open = loc[`hours_${key}_open`];
       const close = loc[`hours_${key}_close`];
-
-      if ((open === null || open === undefined || open === '') &&
-          (close === null || close === undefined || close === '')) {
-        return 'Closed';
-      }
-
-      if (open === null || open === undefined || open === '' ||
-          close === null || close === undefined || close === '') {
-        return '—';
-      }
-
-      return `${this.formatTime(open)} – ${this.formatTime(close)}`;
+      if (!open && !close) return 'Closed';
+      if (!open || !close) return '—';
+      return `${open} – ${close}`;
     }
   }
 };
 </script>
 
 <style scoped>
+.toolbar-sort {
+  margin-top: 0.75rem;
+}
 .results-bar {
   color: var(--color-coffee-600);
   font-size: 0.9rem;
