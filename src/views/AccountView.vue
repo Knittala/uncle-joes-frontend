@@ -44,6 +44,7 @@
 
 <script>
 import { auth } from '../stores/auth';
+import { cart } from '../stores/cart';
 
 export default {
   name: 'AccountView',
@@ -53,6 +54,7 @@ export default {
   methods: {
     signOut() {
       auth.clear();
+      cart.clear();
       this.$router.push('/');
     }
   }
