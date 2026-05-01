@@ -74,19 +74,26 @@ export default {
             password: this.password
           })
         });
+        // Backend /login returns the full public profile:
+        //   { authenticated, id, first_name, last_name, name, email,
+        //     phone_number, home_store }
+        // Store everything we need so the dashboard, order history, and
+        // points pages can render without another /members/{id} fetch.
         auth.setUser({
           id: data.id,
           member_id: data.id,
-          first_name: data.first_name || (data.name || '').split(' ')[0] || 'Member',
+          first_name: data.first_name || 'Member',
           last_name: data.last_name || '',
-          name: data.name || '',
+          name: data.name || `${data.first_name || ''} ${data.last_name || ''}`.trim(),
           email: data.email,
+          phone_number: data.phone_number || null,
           home_store: data.home_store || null
         });
         const redirect = this.$route.query.redirect;
         this.$router.push(redirect && typeof redirect === 'string' ? redirect : '/account');
       } catch (e) {
         this.error = e.message;
+        this.password = '';
       } finally {
         this.loading = false;
       }
