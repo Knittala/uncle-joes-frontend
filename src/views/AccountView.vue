@@ -1,8 +1,8 @@
 <template>
   <section class="page">
     <div class="page-header">
-      <h1>Welcome back, {{ user.first_name }}</h1>
-      <p class="page-subhead">Your Coffee Club dashboard.</p>
+      <h1>Welcome Back, {{ user.first_name }}</h1>
+      <p class="page-subhead">Your Coffee Club Dashboard.</p>
     </div>
 
     <div class="account-grid">
@@ -10,34 +10,91 @@
         <div class="account-card-label">Email</div>
         <div class="account-card-value">{{ user.email }}</div>
       </div>
+
       <div class="account-card">
         <div class="account-card-label">Home store</div>
-        <div class="account-card-value" v-if="user.home_store">{{ user.home_store }}</div>
-        <div class="account-card-value account-card-muted" v-else>Not set</div>
+
+        <div class="account-card-value" v-if="user.home_store">
+          {{ user.home_store }}
+        </div>
+        <div class="account-card-value account-card-muted" v-else>
+          Not set
+        </div>
+
+        <button
+          class="btn btn-secondary btn-small edit-store-btn"
+          @click="showMap = !showMap"
+        >
+          {{ showMap ? 'Close Map' : 'Edit Home Store' }}
+        </button>
       </div>
+
       <div class="account-card">
         <div class="account-card-label">Member ID</div>
-        <div class="account-card-value account-card-muted">{{ user.id || user.member_id }}</div>
+        <div class="account-card-value account-card-muted">
+          {{ user.id || user.member_id }}
+        </div>
       </div>
+    </div>
+
+    <!-- Map -->
+    <div v-if="showMap" class="map-wrapper">
+      <h2>Select Your Home Store</h2>
+
+      <LMap
+        :zoom="2"
+        :center="[20, 0]"
+        style="height: 420px; width: 100%; border-radius: 12px;"
+      >
+        <LTileLayer
+          :url="tileUrl"
+          layer-type="base"
+          name="OpenStreetMap"
+        />
+        <LMarker
+          v-for="location in locations"
+          :key="location.id"
+          :lat-lng="[location.lat, location.lng]"
+          @click="confirmStore(location)"
+        >
+          <LTooltip :options="{ direction: 'top', offset: [0, -10] }">
+            <div class="map-tooltip">
+              <strong>{{ location.id }}</strong><br />
+              {{ location.address }}<br />
+              {{ location.city }}, {{ location.state }}
+            </div>
+          </LTooltip>
+        </LMarker>
+      </LMap>
     </div>
 
     <div class="account-links">
       <router-link to="/points" class="account-link">
         <div class="account-link-title">Loyalty points</div>
-        <div class="account-link-sub">See your total balance and recent activity.</div>
+        <div class="account-link-sub">
+          See your total balance and recent activity.
+        </div>
       </router-link>
+
       <router-link to="/orders" class="account-link">
         <div class="account-link-title">Order history</div>
-        <div class="account-link-sub">Review every order you've ever placed.</div>
+        <div class="account-link-sub">
+          Review every order you've ever placed.
+        </div>
       </router-link>
+
       <router-link to="/menu" class="account-link account-link-accent">
         <div class="account-link-title">Place a new order</div>
-        <div class="account-link-sub">Browse the menu and earn more points.</div>
+        <div class="account-link-sub">
+          Browse the menu and earn more points.
+        </div>
       </router-link>
     </div>
 
     <div class="account-actions">
-      <button type="button" class="btn btn-ghost" @click="signOut">Sign out</button>
+      <button type="button" class="btn btn-ghost" @click="signOut">
+        Sign out
+      </button>
     </div>
   </section>
 </template>
@@ -45,13 +102,100 @@
 <script>
 import { auth } from '../stores/auth';
 import { cart } from '../stores/cart';
+import { fetchJSON } from '../api';
+
+import 'leaflet/dist/leaflet.css';
+import {
+  LMap,
+  LTileLayer,
+  LMarker,
+  LTooltip
+} from '@vue-leaflet/vue-leaflet';
 
 export default {
   name: 'AccountView',
-  computed: {
-    user() { return auth.user || {}; }
+  components: {
+    LMap,
+    LTileLayer,
+    LMarker,
+    LTooltip
   },
+
+  data() {
+    return {
+      showMap: false,
+      locations: [],
+      tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+    };
+  },
+
+  computed: {
+    user() {
+      return auth.user || {};
+    }
+  },
+
+  async mounted() {
+    await this.fetchLocations();
+  },
+
   methods: {
+    async fetchLocations() {
+  try {
+    const data = await fetchJSON('/locations?open_only=true&limit=500');
+this.locations = (data.results || [])
+  .filter(
+    location =>
+      location.location_map_lat != null &&
+      location.location_map_lng != null
+  )
+  .map(location => ({
+    id: location.id,
+    lat: Number(location.location_map_lat),
+    lng: Number(location.location_map_lng),
+    city: location.city,
+    state: location.state,
+    address:
+      location.location_map_address ||
+      location.address_one ||
+      'Unknown address'
+  }));
+  } catch (e) {
+    console.error('Failed to load locations', e);
+  }
+},
+
+async confirmStore(location) {
+  const confirmed = window.confirm(
+    `Set ${location.id} as your home store?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await fetchJSON(
+      `/update_profile/${this.user.id}/home_store`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          home_store: location.id
+        })
+      }
+    );
+
+    auth.setUser({
+      ...this.user,
+      home_store: location.id
+    });
+
+    alert('Home store updated successfully');
+    this.showMap = false;
+  } catch (e) {
+    console.error(e);
+    alert(e.message || 'Failed to update home store');
+  }
+},
+
     signOut() {
       auth.clear();
       cart.clear();
@@ -68,12 +212,19 @@ export default {
   gap: 1rem;
   margin-bottom: 2rem;
 }
+
+.map-tooltip {
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
 .account-card {
   background: var(--color-cream-100);
   border: 1px solid var(--color-cream-200);
   border-radius: var(--radius-md);
   padding: 1.25rem;
 }
+
 .account-card-label {
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -82,22 +233,36 @@ export default {
   margin-bottom: 0.4rem;
   font-weight: 600;
 }
+
 .account-card-value {
   font-size: 1.05rem;
   color: var(--color-coffee-900);
-  word-break: break-word;
 }
+
 .account-card-muted {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 0.85rem;
   color: var(--color-coffee-600);
 }
+
+.edit-store-btn {
+  margin-top: 1rem;
+}
+
+.map-wrapper {
+  margin-bottom: 2rem;
+}
+
+.map-wrapper h2 {
+  margin-bottom: 1rem;
+  color: var(--color-coffee-900);
+}
+
 .account-links {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
 }
+
 .account-link {
   display: block;
   background: var(--color-cream-50);
@@ -105,28 +270,15 @@ export default {
   border-radius: var(--radius-md);
   padding: 1.5rem;
   color: var(--color-coffee-900);
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
-.account-link:hover {
-  border-color: var(--color-coffee-500);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-  color: var(--color-coffee-900);
-}
+
 .account-link-accent {
   background: var(--color-sage-100);
   border-color: var(--color-sage-300);
 }
-.account-link-title {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  color: var(--color-coffee-900);
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+
+.account-actions {
+  display: flex;
+  gap: 1rem;
 }
-.account-link-sub {
-  color: var(--color-coffee-700);
-  font-size: 0.92rem;
-}
-.account-actions { display: flex; gap: 1rem; }
 </style>
