@@ -40,10 +40,9 @@
     <!-- Map -->
     <div v-if="showMap" class="map-wrapper">
       <h2>Select Your Home Store</h2>
-
       <LMap
-        :zoom="2"
-        :center="[20, 0]"
+        :zoom="mapZoom"
+        :center="mapCenter"
         style="height: 420px; width: 100%; border-radius: 12px;"
       >
         <LTileLayer
@@ -66,6 +65,14 @@
           </LTooltip>
         </LMarker>
       </LMap>
+      <div
+        class="map-home-button"
+        @click="goToHomeStore"
+        :class="{ disabled: !user.home_store }"
+        title="Go to My Home Store"
+      >
+        ➤
+      </div>
     </div>
 
     <div class="account-links">
@@ -114,6 +121,7 @@ import {
 
 export default {
   name: 'AccountView',
+
   components: {
     LMap,
     LTileLayer,
@@ -125,7 +133,9 @@ export default {
     return {
       showMap: false,
       locations: [],
-      tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+      tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      mapCenter: [20, 0],
+      mapZoom: 2
     };
   },
 
@@ -141,60 +151,80 @@ export default {
 
   methods: {
     async fetchLocations() {
-  try {
-    const data = await fetchJSON('/locations?open_only=true&limit=500');
-this.locations = (data.results || [])
-  .filter(
-    location =>
-      location.location_map_lat != null &&
-      location.location_map_lng != null
-  )
-  .map(location => ({
-    id: location.id,
-    lat: Number(location.location_map_lat),
-    lng: Number(location.location_map_lng),
-    city: location.city,
-    state: location.state,
-    address:
-      location.location_map_address ||
-      location.address_one ||
-      'Unknown address'
-  }));
-  } catch (e) {
-    console.error('Failed to load locations', e);
-  }
-},
+      try {
+        const data = await fetchJSON('/locations?open_only=true&limit=500');
 
-async confirmStore(location) {
-  const confirmed = window.confirm(
-    `Set ${location.id} as your home store?`
-  );
-
-  if (!confirmed) return;
-
-  try {
-    await fetchJSON(
-      `/update_profile/${this.user.id}/home_store`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({
-          home_store: location.id
-        })
+        this.locations = (data.results || [])
+          .filter(
+            location =>
+              location.location_map_lat != null &&
+              location.location_map_lng != null
+          )
+          .map(location => ({
+            id: location.id,
+            lat: Number(location.location_map_lat),
+            lng: Number(location.location_map_lng),
+            city: location.city,
+            state: location.state,
+            address:
+              location.location_map_address ||
+              location.address_one ||
+              'Unknown address'
+          }));
+      } catch (e) {
+        console.error('Failed to load locations', e);
       }
-    );
+    },
 
-    auth.setUser({
-      ...this.user,
-      home_store: location.id
-    });
+    goToHomeStore() {
+      if (!this.user.home_store) return;
 
-    alert('Home store updated successfully');
-    this.showMap = false;
-  } catch (e) {
-    console.error(e);
-    alert(e.message || 'Failed to update home store');
-  }
-},
+      const store = this.locations.find(
+        location => location.id === this.user.home_store
+      );
+
+      if (!store) {
+        alert('Could not find your home store location');
+        return;
+      }
+
+      this.mapCenter = [store.lat, store.lng];
+      this.mapZoom = 13;
+    },
+
+    async confirmStore(location) {
+      const confirmed = window.confirm(
+        `Set ${location.id} as your home store?`
+      );
+
+      if (!confirmed) return;
+
+      try {
+        await fetchJSON(
+          `/update_profile/${this.user.id}/home_store`,
+          {
+            method: 'PUT',
+            body: JSON.stringify({
+              home_store: location.id
+            })
+          }
+        );
+
+        auth.setUser({
+          ...this.user,
+          home_store: location.id
+        });
+
+        this.mapCenter = [location.lat, location.lng];
+        this.mapZoom = 13;
+
+        alert('Home store updated successfully');
+        this.showMap = false;
+      } catch (e) {
+        console.error(e);
+        alert(e.message || 'Failed to update home store');
+      }
+    },
 
     signOut() {
       auth.clear();
@@ -280,5 +310,52 @@ async confirmStore(location) {
 .account-actions {
   display: flex;
   gap: 1rem;
+}
+
+.map-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.map-wrapper {
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.map-home-button {
+  position: absolute;
+  top: 140px;
+  left: 12px;
+
+  width: 46px;
+  height: 46px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  font-size: 1.35rem;
+  font-weight: bold;
+  color: #2f6f57;
+  z-index: 1000;
+
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.map-home-button:hover {
+  transform: scale(1.06);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+}
+
+.map-home-button.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 </style>
