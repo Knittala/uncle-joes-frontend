@@ -25,6 +25,48 @@
       </div>
     </section>
 
+    <!-- Cafe atmosphere slideshow -------------------------------------- -->
+    <!-- Sits between the hero and the feature cards. Auto-advances every -->
+    <!-- 5s, pauses on hover, supports manual navigation via the dots,    -->
+    <!-- and respects prefers-reduced-motion (no auto-advance for users   -->
+    <!-- who've asked the OS for reduced motion).                         -->
+    <section
+      class="cafe-showcase"
+      aria-label="Inside Uncle Joe's"
+      @mouseenter="pauseSlideshow"
+      @mouseleave="resumeSlideshow"
+    >
+      <div class="cafe-showcase-inner">
+        <div class="cafe-slides">
+          <div
+            v-for="(slide, idx) in slides"
+            :key="slide.src"
+            class="cafe-slide"
+            :class="{ 'is-active': idx === activeSlide }"
+            :aria-hidden="idx !== activeSlide"
+          >
+            <img :src="slide.src" :alt="slide.alt" loading="lazy" />
+            <div class="cafe-slide-caption">{{ slide.caption }}</div>
+          </div>
+        </div>
+
+        <div class="cafe-dots" role="tablist">
+          <button
+            v-for="(slide, idx) in slides"
+            :key="`dot-${idx}`"
+            type="button"
+            class="cafe-dot"
+            :class="{ 'is-active': idx === activeSlide }"
+            :aria-label="`Show photo ${idx + 1}: ${slide.caption}`"
+            :aria-selected="idx === activeSlide"
+            role="tab"
+            @click="goToSlide(idx)"
+          ></button>
+        </div>
+      </div>
+    </section>
+    <!-- End slideshow --------------------------------------------------- -->
+
     <section class="features">
       <div class="features-inner">
         <div class="feature-card">
@@ -51,10 +93,86 @@
 <script>
 import { auth } from '../stores/auth';
 
+import entrance from '../assets/cafe/entrance.png';
+import baristaCounter from '../assets/cafe/barista-counter.png';
+import mainSeating from '../assets/cafe/main-seating-area.png';
+import communityTable from '../assets/cafe/community-table.png';
+import readingNook from '../assets/cafe/reading-nook.png';
+import windowView from '../assets/cafe/window-view.png';
+
+// --- Slideshow config ----------------------------------------------------
+//
+// Slides are intentionally curated and ordered for narrative flow:
+// arrival -> heart of the cafe -> social spaces -> quiet moments.
+// To add or remove slides, edit this array and add/remove the matching
+// import above. Captions are short on purpose — they're decorative, not
+// alt text. (Alt text is set per slide for screen readers.)
+//
+const SLIDES = [
+  { src: entrance,        alt: "Entrance to an Uncle Joe's cafe",         caption: "Step inside" },
+  { src: baristaCounter,  alt: "Uncle Joe's barista counter and menu",    caption: "Behind the counter" },
+  { src: mainSeating,     alt: "Main seating area with bookshelves",      caption: "A place to settle in" },
+  { src: communityTable,  alt: "A guest reading at a community table",    caption: "Stay awhile" },
+  { src: readingNook,     alt: "Leather chairs and books in a quiet nook",caption: "Quiet corners" },
+  { src: windowView,      alt: "A window-side bar with plants and stools",caption: "Watch the day go by" }
+];
+
+const ADVANCE_INTERVAL_MS = 5000;
+
+function prefersReducedMotion() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export default {
   name: 'HomeView',
+  data() {
+    return {
+      slides: SLIDES,
+      activeSlide: 0,
+      // Internal: not reactive on purpose — these are just timer handles
+      timerId: null,
+      paused: false
+    };
+  },
   computed: {
     user() { return auth.user; }
+  },
+  mounted() {
+    // Respect users who've asked for reduced motion: show the first slide
+    // and let them advance manually via the dots, but don't auto-rotate.
+    if (!prefersReducedMotion()) {
+      this.startSlideshow();
+    }
+  },
+  beforeUnmount() {
+    this.stopSlideshow();
+  },
+  methods: {
+    startSlideshow() {
+      this.stopSlideshow();
+      this.timerId = setInterval(() => {
+        if (!this.paused) {
+          this.activeSlide = (this.activeSlide + 1) % this.slides.length;
+        }
+      }, ADVANCE_INTERVAL_MS);
+    },
+    stopSlideshow() {
+      if (this.timerId) {
+        clearInterval(this.timerId);
+        this.timerId = null;
+      }
+    },
+    pauseSlideshow() { this.paused = true; },
+    resumeSlideshow() { this.paused = false; },
+    goToSlide(idx) {
+      this.activeSlide = idx;
+      // Restart the timer so the user gets a full interval to look at
+      // the slide they just clicked, rather than it advancing immediately.
+      if (!prefersReducedMotion()) {
+        this.startSlideshow();
+      }
+    }
   }
 };
 </script>
@@ -131,6 +249,89 @@ export default {
   margin-bottom: 0.5rem;
 }
 
+/* --- Slideshow ------------------------------------------------------- */
+.cafe-showcase {
+  background: var(--color-coffee-900);
+  padding: 3rem 1.5rem;
+}
+.cafe-showcase-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.cafe-slides {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  background: var(--color-coffee-800);
+}
+.cafe-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+  pointer-events: none;
+}
+.cafe-slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cafe-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cafe-slide-caption {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  color: var(--color-cream-50);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  border-radius: var(--radius-md);
+  letter-spacing: 0.02em;
+}
+
+.cafe-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+}
+.cafe-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.cafe-dot:hover { background: rgba(255, 255, 255, 0.55); }
+.cafe-dot.is-active {
+  background: var(--color-sage-300);
+  transform: scale(1.25);
+}
+.cafe-dot:focus-visible {
+  outline: 2px solid var(--color-sage-300);
+  outline-offset: 2px;
+}
+
+/* For users who prefer reduced motion: no fade transition either. */
+@media (prefers-reduced-motion: reduce) {
+  .cafe-slide { transition: none; }
+}
+/* --- End slideshow --------------------------------------------------- */
+
 .features {
   max-width: 1200px;
   margin: 0 auto;
@@ -168,5 +369,11 @@ export default {
   .hero-inner { grid-template-columns: 1fr; }
   .features-inner { grid-template-columns: 1fr; }
   .hero { padding: 3rem 1.5rem 2.5rem; }
+  .cafe-slides { aspect-ratio: 4 / 3; }
+  .cafe-slide-caption {
+    left: 1rem;
+    bottom: 1rem;
+    font-size: 0.95rem;
+  }
 }
 </style>
