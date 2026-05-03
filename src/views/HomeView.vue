@@ -131,8 +131,8 @@ export default {
       slides: SLIDES,
       activeSlide: 0,
       // Internal: not reactive on purpose — these are just timer handles
-      _timer: null,
-      _paused: false
+      timerId: null,
+      paused: false
     };
   },
   computed: {
@@ -151,20 +151,20 @@ export default {
   methods: {
     startSlideshow() {
       this.stopSlideshow();
-      this._timer = setInterval(() => {
-        if (!this._paused) {
+      this.timerId = setInterval(() => {
+        if (!this.paused) {
           this.activeSlide = (this.activeSlide + 1) % this.slides.length;
         }
       }, ADVANCE_INTERVAL_MS);
     },
     stopSlideshow() {
-      if (this._timer) {
-        clearInterval(this._timer);
-        this._timer = null;
+      if (this.timerId) {
+        clearInterval(this.timerId);
+        this.timerId = null;
       }
     },
-    pauseSlideshow() { this._paused = true; },
-    resumeSlideshow() { this._paused = false; },
+    pauseSlideshow() { this.paused = true; },
+    resumeSlideshow() { this.paused = false; },
     goToSlide(idx) {
       this.activeSlide = idx;
       // Restart the timer so the user gets a full interval to look at
