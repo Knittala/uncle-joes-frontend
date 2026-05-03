@@ -1,0 +1,52 @@
+
+> uncle-joes-frontend@0.1.0 build
+> vue-cli-service build
+
+All browser targets in the browserslist configuration have supported ES module.
+Therefore we don't build two separate bundles for differential loading.
+
+
+-  Building for production...
+ ERROR  Failed to compile with 1 error11:07:26 PM
+
+[eslint] 
+/home/nohples/uncle-joes-frontend/src/views/HomeView.vue
+  134:7  error  Keys starting with '_' are reserved in '_timer' group   vue/no-reserved-keys
+  135:7  error  Keys starting with '_' are reserved in '_paused' group  vue/no-reserved-keys
+
+✖ 2 problems (2 errors, 0 warnings)
+
+
+You may use special comments to disable some warnings.
+Use // eslint-disable-next-line to ignore the next line.
+Use /* eslint-disable */ to ignore all warnings in a file.
+ ERROR  Error: Build failed with errors.
+Error: Build failed with errors.
+    at /home/nohples/uncle-joes-frontend/node_modules/@vue/cli-service/lib/commands/build/index.js:207:23
+    at /home/nohples/uncle-joes-frontend/node_modules/webpack/lib/webpack.js:241:7
+    at /home/nohples/uncle-joes-frontend/node_modules/webpack/lib/HookWebpackError.js:101:2
+    at Hook.eval [as callAsync] (eval at create (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/HookCodeFactory.js:31:10), <anonymous>:6:1)
+    at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/Hook.js:21:14)
+    at Cache.shutdown (/home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Cache.js:182:23)
+    at /home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Compiler.js:1447:15
+    at Hook.eval [as callAsync] (eval at create (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/HookCodeFactory.js:31:10), <anonymous>:6:1)
+    at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/Hook.js:21:14)
+    at Compiler.close (/home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Compiler.js:1440:23)
+    at /home/nohples/uncle-joes-frontend/node_modules/webpack/lib/webpack.js:240:15
+    at finalCallback (/home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Compiler.js:540:32)
+    at /home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Compiler.js:565:13
+    at Hook.eval [as callAsync] (eval at create (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/HookCodeFactory.js:31:10), <anonymous>:24:1)
+    at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/Hook.js:21:14)
+    at onCompiled (/home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Compiler.js:563:21)
+    at /home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Compiler.js:1417:17
+    at Hook.eval [as callAsync] (eval at create (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/HookCodeFactory.js:31:10), <anonymous>:6:1)
+    at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/Hook.js:21:14)
+    at /home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Compiler.js:1413:33
+    at finalCallback (/home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Compilation.js:3278:11)
+    at /home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Compilation.js:3617:11
+    at Hook.eval [as callAsync] (eval at create (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/HookCodeFactory.js:31:10), <anonymous>:6:1)
+    at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/Hook.js:21:14)
+    at /home/nohples/uncle-joes-frontend/node_modules/webpack/lib/Compilation.js:3610:38
+    at eval (eval at create (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/HookCodeFactory.js:31:10), <anonymous>:15:1)
+    at eval (eval at create (/home/nohples/uncle-joes-frontend/node_modules/tapable/lib/HookCodeFactory.js:31:10), <anonymous>:14:1)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
