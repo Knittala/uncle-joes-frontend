@@ -37,9 +37,46 @@
       </div>
     </div>
 
-    <!-- Map -->
     <div v-if="showMap" class="map-wrapper">
       <h2>Select Your Home Store</h2>
+
+      <div class="home-store-toolbar">
+        <div class="toolbar-group toolbar-grow">
+          <label class="toolbar-label">City</label>
+          <input
+            type="search"
+            v-model="cityQuery"
+            placeholder="Search city..."
+            class="search-input"
+          />
+        </div>
+
+        <div class="toolbar-group">
+          <label class="toolbar-label">State</label>
+          <select v-model="selectedState" class="filter-control">
+            <option value="">All states</option>
+            <option v-for="s in availableStates" :key="s" :value="s">
+              {{ s }}
+            </option>
+          </select>
+        </div>
+
+        <div class="toolbar-group">
+          <label class="toolbar-label">Sort by</label>
+          <select v-model="sortBy" class="filter-control">
+            <option value="city_asc">City A-Z</option>
+            <option value="city_desc">City Z-A</option>
+          </select>
+        </div>
+
+        <div class="toolbar-group toolbar-actions">
+          <label class="toolbar-label invisible-label">.</label>
+          <button class="btn btn-ghost btn-small" @click="resetMapFilters">
+            Reset
+          </button>
+        </div>
+      </div>
+
       <LMap
         :zoom="mapZoom"
         :center="mapCenter"
@@ -50,8 +87,9 @@
           layer-type="base"
           name="OpenStreetMap"
         />
+
         <LMarker
-          v-for="location in locations"
+          v-for="location in filteredLocations"
           :key="location.id"
           :lat-lng="[location.lat, location.lng]"
           @click="confirmStore(location)"
@@ -65,6 +103,7 @@
           </LTooltip>
         </LMarker>
       </LMap>
+
       <div
         class="map-home-button"
         @click="goToHomeStore"
@@ -119,6 +158,13 @@ import {
   LTooltip
 } from '@vue-leaflet/vue-leaflet';
 
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
+  'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
+  'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
+  'VA','WA','WV','WI','WY'
+];
+
 export default {
   name: 'AccountView',
 
@@ -133,6 +179,12 @@ export default {
     return {
       showMap: false,
       locations: [],
+
+      cityQuery: '',
+      selectedState: '',
+      sortBy: 'city_asc',
+      states: US_STATES,
+
       tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       mapCenter: [20, 0],
       mapZoom: 2
@@ -142,6 +194,40 @@ export default {
   computed: {
     user() {
       return auth.user || {};
+    },
+
+    availableStates() {
+      const set = new Set(
+        this.locations
+          .filter(location => location.open_for_business)
+          .map(location => location.state)
+          .filter(Boolean)
+      );
+
+      return Array.from(set).sort();
+    },
+
+    filteredLocations() {
+      const query = this.cityQuery.trim().toLowerCase();
+
+      return this.locations
+        .filter(location => {
+          if (!location.open_for_business) return false;
+
+          if (query && !(location.city || '').toLowerCase().includes(query)) {
+            return false;
+          }
+
+          if (this.selectedState && location.state !== this.selectedState) {
+            return false;
+          }
+
+          return true;
+        })
+        .sort((a, b) => {
+          const result = (a.city || '').localeCompare(b.city || '');
+          return this.sortBy === 'city_desc' ? -result : result;
+        });
     }
   },
 
@@ -166,6 +252,7 @@ export default {
             lng: Number(location.location_map_lng),
             city: location.city,
             state: location.state,
+            open_for_business: location.open_for_business,
             address:
               location.location_map_address ||
               location.address_one ||
@@ -174,6 +261,12 @@ export default {
       } catch (e) {
         console.error('Failed to load locations', e);
       }
+    },
+
+    resetMapFilters() {
+      this.cityQuery = '';
+      this.selectedState = '';
+      this.sortBy = 'city_asc';
     },
 
     goToHomeStore() {
@@ -243,11 +336,6 @@ export default {
   margin-bottom: 2rem;
 }
 
-.map-tooltip {
-  font-size: 0.85rem;
-  line-height: 1.35;
-}
-
 .account-card {
   background: var(--color-cream-100);
   border: 1px solid var(--color-cream-200);
@@ -279,6 +367,7 @@ export default {
 
 .map-wrapper {
   margin-bottom: 2rem;
+  position: relative;
 }
 
 .map-wrapper h2 {
@@ -286,46 +375,64 @@ export default {
   color: var(--color-coffee-900);
 }
 
-.account-links {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.account-link {
-  display: block;
-  background: var(--color-cream-50);
-  border: 1px solid var(--color-cream-200);
-  border-radius: var(--radius-md);
-  padding: 1.5rem;
-  color: var(--color-coffee-900);
-}
-
-.account-link-accent {
-  background: var(--color-sage-100);
-  border-color: var(--color-sage-300);
-}
-
-.account-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.map-actions {
-  display: flex;
-  gap: 0.75rem;
+.home-store-toolbar {
+  background: var(--color-cream-100);
+  border: 1px solid var(--color-cream-300);
+  border-radius: 16px;
+  padding: 1rem;
   margin-bottom: 1rem;
+
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  box-shadow: var(--shadow-sm);
 }
 
-.map-wrapper {
-  margin-bottom: 2rem;
-  position: relative;
+.toolbar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.toolbar-grow {
+  flex: 1;
+  min-width: 240px;
+}
+
+.toolbar-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-coffee-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.invisible-label {
+  visibility: hidden;
+}
+
+.search-input {
+  width: 100%;
+}
+
+.filter-control {
+  min-width: 140px;
+}
+
+.toolbar-actions {
+  justify-content: flex-end;
+}
+
+.map-tooltip {
+  font-size: 0.85rem;
+  line-height: 1.35;
 }
 
 .map-home-button {
   position: absolute;
-  top: 140px;
+  top: 250px;
   left: 12px;
 
   width: 46px;
@@ -357,5 +464,31 @@ export default {
   opacity: 0.45;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+.account-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.account-link {
+  display: block;
+  background: var(--color-cream-50);
+  border: 1px solid var(--color-cream-200);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  color: var(--color-coffee-900);
+}
+
+.account-link-accent {
+  background: var(--color-sage-100);
+  border-color: var(--color-sage-300);
+}
+
+.account-actions {
+  display: flex;
+  gap: 1rem;
 }
 </style>

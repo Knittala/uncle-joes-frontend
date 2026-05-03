@@ -7,11 +7,8 @@
       </p>
     </div>
 
-    <!-- Search + Filter -->
     <div class="toolbar-card">
       <div class="search-toolbar">
-        
-        <!-- City -->
         <div class="toolbar-group toolbar-grow">
           <label class="toolbar-label">City</label>
           <input
@@ -23,7 +20,6 @@
           />
         </div>
 
-        <!-- State -->
         <div class="toolbar-group">
           <label class="toolbar-label">State</label>
           <select v-model="selectedState" class="filter-control">
@@ -32,7 +28,6 @@
           </select>
         </div>
 
-        <!-- Sort -->
         <div class="toolbar-group">
           <label class="toolbar-label">Sort by</label>
           <select v-model="sortBy" class="filter-control">
@@ -41,16 +36,15 @@
           </select>
         </div>
 
-        <!-- Open only -->
-        <div class="toolbar-group toolbar-checkbox">
-          <label class="toolbar-label invisible-label">.</label>
-          <label class="open-only-filter">
-            <input type="checkbox" v-model="openOnly" />
-            Open for Business Only
-          </label>
+        <div class="toolbar-group">
+          <label class="toolbar-label">Store status</label>
+          <select v-model="storeStatus" class="filter-control">
+            <option value="">All stores</option>
+            <option value="open">Open for business only</option>
+            <option value="opening_soon">Opening soon</option>
+          </select>
         </div>
 
-        <!-- Buttons -->
         <div class="toolbar-group toolbar-actions">
           <label class="toolbar-label invisible-label">.</label>
           <div class="action-buttons">
@@ -62,13 +56,10 @@
             </button>
           </div>
         </div>
-
       </div>
     </div>
 
-    <!-- Layout -->
     <div class="locations-layout">
-      <!-- LEFT: cards -->
       <div class="locations-panel">
         <div v-if="loading" class="status-note">Loading...</div>
         <div v-else-if="error" class="status-note status-error">{{ error }}</div>
@@ -88,7 +79,7 @@
                 class="status-pill"
                 :class="loc.open_for_business ? 'status-open' : 'status-closed'"
               >
-                {{ loc.open_for_business ? 'Open' : 'Closed' }}
+                {{ loc.open_for_business ? 'Open' : 'Opening soon' }}
               </span>
             </header>
 
@@ -126,7 +117,6 @@
         </div>
       </div>
 
-      <!-- RIGHT: map -->
       <div class="map-panel">
         <div v-if="mapReady" class="map-wrapper">
           <LMap
@@ -186,7 +176,14 @@ const US_STATES = [
 ];
 
 export default {
-  components: { LMap, LTileLayer, LMarker, LTooltip },
+  name: 'LocationsView',
+
+  components: {
+    LMap,
+    LTileLayer,
+    LMarker,
+    LTooltip
+  },
 
   data() {
     return {
@@ -196,7 +193,7 @@ export default {
 
       cityQuery: '',
       selectedState: '',
-      openOnly: false,
+      storeStatus: '',
       sortBy: 'city_asc',
 
       mapReady: false,
@@ -226,11 +223,25 @@ export default {
 
   computed: {
     sortedLocations() {
-      const copy = [...this.locations];
+      let copy = [...this.locations];
+
+      copy = copy.filter(loc => {
+        if (this.storeStatus === 'open') {
+          return loc.open_for_business === true;
+        }
+
+        if (this.storeStatus === 'opening_soon') {
+          return loc.open_for_business === false;
+        }
+
+        return true;
+      });
+
       copy.sort((a, b) =>
         (this.sortBy === 'city_desc' ? -1 : 1) *
-        a.city.localeCompare(b.city)
+        (a.city || '').localeCompare(b.city || '')
       );
+
       return copy;
     }
   },
@@ -244,16 +255,21 @@ export default {
   methods: {
     async loadLocations() {
       this.loading = true;
+      this.error = null;
+
       try {
         const params = new URLSearchParams();
-        if (this.cityQuery) params.set('city', this.cityQuery);
-        if (this.selectedState) params.set('state', this.selectedState);
-        if (this.openOnly) params.set('open_only', 'true');
 
-        const data = await fetchJSON(`/locations?${params}`);
+        if (this.cityQuery.trim()) params.set('city', this.cityQuery.trim());
+        if (this.selectedState) params.set('state', this.selectedState);
+
+        params.set('limit', '500');
+
+        const data = await fetchJSON(`/locations?${params.toString()}`);
         this.locations = data.results || [];
       } catch (e) {
         this.error = e.message;
+        this.locations = [];
       } finally {
         this.loading = false;
       }
@@ -277,7 +293,7 @@ export default {
     resetFilters() {
       this.cityQuery = '';
       this.selectedState = '';
-      this.openOnly = false;
+      this.storeStatus = '';
       this.sortBy = 'city_asc';
       this.loadLocations();
     },
@@ -302,13 +318,17 @@ export default {
       const open = loc[`hours_${key}_open`];
       const close = loc[`hours_${key}_close`];
 
-      if ((open === null || open === undefined || open === '') &&
-          (close === null || close === undefined || close === '')) {
+      if (
+        (open === null || open === undefined || open === '') &&
+        (close === null || close === undefined || close === '')
+      ) {
         return 'Closed';
       }
 
-      if (open === null || open === undefined || open === '' ||
-          close === null || close === undefined || close === '') {
+      if (
+        open === null || open === undefined || open === '' ||
+        close === null || close === undefined || close === ''
+      ) {
         return '—';
       }
 
@@ -327,7 +347,6 @@ export default {
   margin: auto;
   padding: 1rem;
   border-radius: 18px;
-
   max-height: 3000px;
 }
 
@@ -453,7 +472,7 @@ export default {
   background: var(--color-cream-100);
   border: 1px solid var(--color-cream-300);
   border-radius: 16px;
-  padding: 1.25rem 1.25rem 1.25rem;
+  padding: 1.25rem;
   margin-bottom: 1.25rem;
   box-shadow: var(--shadow-sm);
 }
@@ -497,18 +516,8 @@ export default {
   min-width: 140px;
 }
 
-.toolbar-checkbox,
 .toolbar-actions {
   justify-content: flex-end;
-}
-
-.open-only-filter {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  color: var(--color-coffee-700);
-  white-space: nowrap;
 }
 
 .action-buttons {
@@ -516,10 +525,9 @@ export default {
   gap: 0.5rem;
 }
 
-@media (min-height: 10000px) {
+@media (max-width: 900px) {
   .locations-layout {
     flex-direction: column;
-    height: auto;
   }
 
   .locations-panel,
