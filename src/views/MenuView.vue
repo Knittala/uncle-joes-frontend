@@ -31,6 +31,17 @@
       </button>
     </div>
 
+    <div class="toolbar toolbar-sort">
+      <div class="toolbar-group">
+        <label for="sort-by">Sort by</label>
+        <select id="sort-by" v-model="sortBy">
+          <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+      </div>
+    </div>
+
     <div v-if="loading" class="status-note">Loading menu...</div>
     <div v-else-if="error" class="status-note status-error">{{ error }}</div>
     <div v-else-if="!filteredItems.length" class="status-note">No items match your filters.</div>
@@ -72,6 +83,85 @@ import { cart } from '../stores/cart';
 
 const SIZE_ORDER = { Small: 1, Medium: 2, Large: 3 };
 
+// --- Sort config ---------------------------------------------------------
+//
+// To add a new sort option later: add an entry here and a matching <option>
+// in the template. Each strategy is a comparator function (a, b) => number.
+// Tiebreakers are baked into each strategy so order is deterministic.
+//
+// NaN prices are pushed to the end of price-sorted lists.
+//
+const DEFAULT_SORT = 'name_asc';
+
+function priceNum(item) {
+  const n = parseFloat(item.price);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function compareNames(a, b) {
+  return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+}
+
+function compareSizes(a, b) {
+  return (SIZE_ORDER[a.size] || 99) - (SIZE_ORDER[b.size] || 99);
+}
+
+function compareIds(a, b) {
+  // Final tiebreaker so order is fully deterministic across renders.
+  if (a.id === b.id) return 0;
+  return a.id < b.id ? -1 : 1;
+}
+
+function comparePrices(a, b, direction) {
+  const pa = priceNum(a);
+  const pb = priceNum(b);
+  // NaN always sorts to the end, regardless of direction.
+  const aNaN = Number.isNaN(pa);
+  const bNaN = Number.isNaN(pb);
+  if (aNaN && bNaN) return 0;
+  if (aNaN) return 1;
+  if (bNaN) return -1;
+  return direction === 'desc' ? pb - pa : pa - pb;
+}
+
+const SORT_STRATEGIES = {
+  name_asc: {
+    label: 'Name: A–Z',
+    compare: (a, b) =>
+      compareNames(a, b) ||
+      compareSizes(a, b) ||
+      comparePrices(a, b, 'asc') ||
+      compareIds(a, b)
+  },
+  name_desc: {
+    label: 'Name: Z–A',
+    compare: (a, b) =>
+      -compareNames(a, b) ||
+      compareSizes(a, b) ||
+      comparePrices(a, b, 'asc') ||
+      compareIds(a, b)
+  },
+  price_asc: {
+    label: 'Price: Low to High',
+    compare: (a, b) =>
+      comparePrices(a, b, 'asc') ||
+      compareNames(a, b) ||
+      compareIds(a, b)
+  },
+  price_desc: {
+    label: 'Price: High to Low',
+    compare: (a, b) =>
+      comparePrices(a, b, 'desc') ||
+      compareNames(a, b) ||
+      compareIds(a, b)
+  }
+};
+
+const SORT_OPTIONS = Object.keys(SORT_STRATEGIES).map(value => ({
+  value,
+  label: SORT_STRATEGIES[value].label
+}));
+
 export default {
   name: 'MenuView',
   data() {
@@ -82,6 +172,8 @@ export default {
       selectedCategory: '',
       selectedSize: '',
       searchQuery: '',
+      sortBy: DEFAULT_SORT,
+      sortOptions: SORT_OPTIONS,
       toast: ''
     };
   },
@@ -103,7 +195,11 @@ export default {
         return true;
       });
     },
+    // Items grouped by category, with the active sort applied within each group.
+    // Headings are preserved (Option A) — the sort reorders items inside each
+    // category but does not flatten or reorder the sections themselves.
     groupedItems() {
+      const strategy = SORT_STRATEGIES[this.sortBy] || SORT_STRATEGIES[DEFAULT_SORT];
       const groups = {};
       for (const item of this.filteredItems) {
         const cat = item.category || 'Other';
@@ -111,16 +207,17 @@ export default {
         groups[cat].push(item);
       }
       for (const cat in groups) {
-        groups[cat].sort((a, b) => {
-          const n = (a.name || '').localeCompare(b.name || '');
-          if (n !== 0) return n;
-          return (SIZE_ORDER[a.size] || 99) - (SIZE_ORDER[b.size] || 99);
-        });
+        groups[cat].sort(strategy.compare);
       }
       return groups;
     },
     hasActiveFilters() {
-      return !!(this.selectedCategory || this.selectedSize || this.searchQuery);
+      return !!(
+        this.selectedCategory ||
+        this.selectedSize ||
+        this.searchQuery ||
+        this.sortBy !== DEFAULT_SORT
+      );
     }
   },
   async mounted() {
@@ -138,6 +235,7 @@ export default {
       this.selectedCategory = '';
       this.selectedSize = '';
       this.searchQuery = '';
+      this.sortBy = DEFAULT_SORT;
     },
     formatPrice(price) {
       if (price == null) return '—';
@@ -157,6 +255,9 @@ export default {
 </script>
 
 <style scoped>
+.toolbar-sort {
+  margin-top: 0.75rem;
+}
 .menu-groups { display: flex; flex-direction: column; gap: 3rem; }
 .menu-group-title {
   font-size: 1.6rem;
