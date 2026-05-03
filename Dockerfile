@@ -2,6 +2,7 @@ FROM node:18-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
+RUN npm install leaflet @vue-leaflet/vue-leaflet
 COPY . .
 RUN npm run build
 

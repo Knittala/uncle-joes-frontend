@@ -82,12 +82,12 @@ export default {
         auth.setUser({
           id: data.id,
           member_id: data.id,
-          first_name: data.first_name || 'Member',
+          first_name: data.first_name || (data.name || '').split(' ')[0] || 'Member',
           last_name: data.last_name || '',
           name: data.name || `${data.first_name || ''} ${data.last_name || ''}`.trim(),
           email: data.email,
           phone_number: data.phone_number || null,
-          home_store: data.home_store || null
+          home_store: `${data.home_store || ''}` || null
         });
         const redirect = this.$route.query.redirect;
         this.$router.push(redirect && typeof redirect === 'string' ? redirect : '/account');
