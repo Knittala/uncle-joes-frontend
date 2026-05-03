@@ -15,6 +15,7 @@
           <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
         </select>
       </div>
+
       <div class="toolbar-group">
         <label for="filter-size">Size</label>
         <select id="filter-size" v-model="selectedSize">
@@ -22,11 +23,23 @@
           <option v-for="size in sizes" :key="size" :value="size">{{ size }}</option>
         </select>
       </div>
+
       <div class="toolbar-group toolbar-group-grow">
         <label for="search-menu">Search</label>
-        <input id="search-menu" type="search" v-model="searchQuery" placeholder="Find an item" />
+        <input
+          id="search-menu"
+          type="search"
+          v-model="searchQuery"
+          placeholder="Find an item"
+        />
       </div>
-      <button type="button" class="btn btn-ghost" @click="resetFilters" :disabled="!hasActiveFilters">
+
+      <button
+        type="button"
+        class="btn btn-ghost"
+        @click="resetFilters"
+        :disabled="!hasActiveFilters"
+      >
         Reset
       </button>
     </div>
@@ -44,31 +57,52 @@
 
     <div v-if="loading" class="status-note">Loading menu...</div>
     <div v-else-if="error" class="status-note status-error">{{ error }}</div>
-    <div v-else-if="!filteredItems.length" class="status-note">No items match your filters.</div>
+    <div v-else-if="!filteredMenuItems.length" class="status-note">
+      No items match your filters.
+    </div>
 
     <div v-else class="menu-groups">
-      <div v-for="(items, category) in groupedItems" :key="category" class="menu-group">
+      <div
+        v-for="(items, category) in groupedItems"
+        :key="category"
+        class="menu-group"
+      >
         <h2 class="menu-group-title">{{ category }}</h2>
+
         <div class="menu-grid">
-          <article v-for="item in items" :key="item.id" class="menu-card">
+          <article
+            v-for="item in items"
+            :key="item.id"
+            class="menu-card"
+          >
             <div v-if="getMenuImage(item.name)" class="menu-card-image">
               <img :src="getMenuImage(item.name)" :alt="item.name" loading="lazy" />
             </div>
+
             <header class="menu-card-head">
               <h3>{{ item.name }}</h3>
-              <span class="menu-price">${{ formatPrice(item.price) }}</span>
             </header>
-            <div class="menu-meta">
-              <span class="tag" v-if="item.size">{{ item.size }}</span>
-              <span class="tag tag-muted" v-if="item.calories != null">{{ item.calories }} cal</span>
+
+            <div class="size-list">
+              <button
+                v-for="sizeOption in item.sizes"
+                :key="sizeOption.id"
+                type="button"
+                class="size-option"
+                @click="addToCart(sizeOption)"
+              >
+                <div>
+                  <strong>{{ sizeOption.size }}</strong>
+                  <div class="size-details">
+                    {{ sizeOption.calories }} cal
+                  </div>
+                </div>
+
+                <span class="size-price">
+                  ${{ formatPrice(sizeOption.price) }}
+                </span>
+              </button>
             </div>
-            <button
-              type="button"
-              class="btn btn-secondary btn-small btn-add"
-              @click="addToCart(item)"
-            >
-              Add to cart
-            </button>
           </article>
         </div>
       </div>
@@ -86,78 +120,49 @@ import { cart } from '../stores/cart';
 import { getMenuImage } from '../menuImages.js';
 
 const SIZE_ORDER = { Small: 1, Medium: 2, Large: 3 };
-
-// --- Sort config ---------------------------------------------------------
-//
-// To add a new sort option later: add an entry here and a matching <option>
-// in the template. Each strategy is a comparator function (a, b) => number.
-// Tiebreakers are baked into each strategy so order is deterministic.
-//
-// NaN prices are pushed to the end of price-sorted lists.
-//
 const DEFAULT_SORT = 'name_asc';
 
 function priceNum(item) {
-  const n = parseFloat(item.price);
+  const n = parseFloat(item.defaultItem?.price ?? item.price);
   return Number.isFinite(n) ? n : NaN;
 }
 
 function compareNames(a, b) {
-  return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
-}
-
-function compareSizes(a, b) {
-  return (SIZE_ORDER[a.size] || 99) - (SIZE_ORDER[b.size] || 99);
-}
-
-function compareIds(a, b) {
-  // Final tiebreaker so order is fully deterministic across renders.
-  if (a.id === b.id) return 0;
-  return a.id < b.id ? -1 : 1;
+  return (a.name || '').localeCompare(b.name || '', undefined, {
+    sensitivity: 'base'
+  });
 }
 
 function comparePrices(a, b, direction) {
   const pa = priceNum(a);
   const pb = priceNum(b);
-  // NaN always sorts to the end, regardless of direction.
+
   const aNaN = Number.isNaN(pa);
   const bNaN = Number.isNaN(pb);
+
   if (aNaN && bNaN) return 0;
   if (aNaN) return 1;
   if (bNaN) return -1;
+
   return direction === 'desc' ? pb - pa : pa - pb;
 }
 
 const SORT_STRATEGIES = {
   name_asc: {
     label: 'Name: A–Z',
-    compare: (a, b) =>
-      compareNames(a, b) ||
-      compareSizes(a, b) ||
-      comparePrices(a, b, 'asc') ||
-      compareIds(a, b)
+    compare: (a, b) => compareNames(a, b) || comparePrices(a, b, 'asc')
   },
   name_desc: {
     label: 'Name: Z–A',
-    compare: (a, b) =>
-      -compareNames(a, b) ||
-      compareSizes(a, b) ||
-      comparePrices(a, b, 'asc') ||
-      compareIds(a, b)
+    compare: (a, b) => -compareNames(a, b) || comparePrices(a, b, 'asc')
   },
   price_asc: {
     label: 'Price: Low to High',
-    compare: (a, b) =>
-      comparePrices(a, b, 'asc') ||
-      compareNames(a, b) ||
-      compareIds(a, b)
+    compare: (a, b) => comparePrices(a, b, 'asc') || compareNames(a, b)
   },
   price_desc: {
     label: 'Price: High to Low',
-    compare: (a, b) =>
-      comparePrices(a, b, 'desc') ||
-      compareNames(a, b) ||
-      compareIds(a, b)
+    compare: (a, b) => comparePrices(a, b, 'desc') || compareNames(a, b)
   }
 };
 
@@ -168,6 +173,7 @@ const SORT_OPTIONS = Object.keys(SORT_STRATEGIES).map(value => ({
 
 export default {
   name: 'MenuView',
+
   data() {
     return {
       items: [],
@@ -181,40 +187,92 @@ export default {
       toast: ''
     };
   },
+
   computed: {
     categories() {
       const set = new Set(this.items.map(i => i.category).filter(Boolean));
       return Array.from(set).sort();
     },
+
     sizes() {
       const set = new Set(this.items.map(i => i.size).filter(Boolean));
-      return Array.from(set).sort((a, b) => (SIZE_ORDER[a] || 99) - (SIZE_ORDER[b] || 99));
+      return Array.from(set).sort(
+        (a, b) => (SIZE_ORDER[a] || 99) - (SIZE_ORDER[b] || 99)
+      );
     },
-    filteredItems() {
+
+    groupedMenuItems() {
+      const groups = {};
+
+      for (const item of this.items) {
+        const key = `${item.category || 'Other'}-${item.name}`;
+
+        if (!groups[key]) {
+          groups[key] = {
+            id: key,
+            name: item.name,
+            category: item.category || 'Other',
+            sizes: []
+          };
+        }
+
+        groups[key].sizes.push(item);
+      }
+
+      return Object.values(groups).map(group => {
+        group.sizes.sort(
+          (a, b) => (SIZE_ORDER[a.size] || 99) - (SIZE_ORDER[b.size] || 99)
+        );
+
+        group.defaultItem =
+          group.sizes.find(size => size.size === 'Medium') ||
+          group.sizes[0];
+
+        return group;
+      });
+    },
+
+    filteredMenuItems() {
       const q = this.searchQuery.trim().toLowerCase();
-      return this.items.filter(item => {
-        if (this.selectedCategory && item.category !== this.selectedCategory) return false;
-        if (this.selectedSize && item.size !== this.selectedSize) return false;
-        if (q && !(item.name || '').toLowerCase().includes(q)) return false;
+
+      return this.groupedMenuItems.filter(item => {
+        if (this.selectedCategory && item.category !== this.selectedCategory) {
+          return false;
+        }
+
+        if (
+          this.selectedSize &&
+          !item.sizes.some(size => size.size === this.selectedSize)
+        ) {
+          return false;
+        }
+
+        if (q && !(item.name || '').toLowerCase().includes(q)) {
+          return false;
+        }
+
         return true;
       });
     },
-    // Items grouped by category, with the active sort applied within each group.
-    // Headings are preserved (Option A) — the sort reorders items inside each
-    // category but does not flatten or reorder the sections themselves.
+
     groupedItems() {
       const strategy = SORT_STRATEGIES[this.sortBy] || SORT_STRATEGIES[DEFAULT_SORT];
       const groups = {};
-      for (const item of this.filteredItems) {
+
+      for (const item of this.filteredMenuItems) {
         const cat = item.category || 'Other';
+
         if (!groups[cat]) groups[cat] = [];
         groups[cat].push(item);
       }
+
       for (const cat in groups) {
         groups[cat].sort(strategy.compare);
       }
+
       return groups;
     },
+
     hasActiveFilters() {
       return !!(
         this.selectedCategory ||
@@ -224,16 +282,18 @@ export default {
       );
     }
   },
+
   async mounted() {
     try {
       const data = await fetchJSON('/filter/menu_items');
-      this.items = Array.isArray(data) ? data : (data.results || []);
+      this.items = Array.isArray(data) ? data : data.results || [];
     } catch (e) {
       this.error = e.message;
     } finally {
       this.loading = false;
     }
   },
+
   methods: {
     resetFilters() {
       this.selectedCategory = '';
@@ -241,19 +301,25 @@ export default {
       this.searchQuery = '';
       this.sortBy = DEFAULT_SORT;
     },
+
     formatPrice(price) {
       if (price == null) return '—';
       return Number(price).toFixed(2);
     },
+
     addToCart(item) {
       cart.add(item, 1);
       this.showToast(`Added ${item.name} (${item.size}) to cart`);
     },
+
     showToast(msg) {
       this.toast = msg;
       clearTimeout(this._toastTimer);
-      this._toastTimer = setTimeout(() => { this.toast = ''; }, 2200);
+      this._toastTimer = setTimeout(() => {
+        this.toast = '';
+      }, 2200);
     },
+
     getMenuImage
   }
 };
@@ -263,7 +329,13 @@ export default {
 .toolbar-sort {
   margin-top: 0.75rem;
 }
-.menu-groups { display: flex; flex-direction: column; gap: 3rem; }
+
+.menu-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
 .menu-group-title {
   font-size: 1.6rem;
   color: var(--color-coffee-800);
@@ -271,11 +343,13 @@ export default {
   border-bottom: 2px solid var(--color-cream-200);
   margin-bottom: 1.25rem;
 }
+
 .menu-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
   gap: 1rem;
 }
+
 .menu-card {
   background: var(--color-cream-50);
   border: 1px solid var(--color-cream-200);
@@ -283,21 +357,28 @@ export default {
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  gap: 0.85rem;
+  min-height: 380px;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
   overflow: hidden;
 }
+
 .menu-card:hover {
   border-color: var(--color-coffee-500);
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
 }
+
 .menu-card-image {
   margin: -1.25rem -1.25rem 0;
   aspect-ratio: 16 / 10;
   overflow: hidden;
   background: var(--color-cream-200);
 }
+
 .menu-card-image img {
   width: 100%;
   height: 100%;
@@ -305,29 +386,70 @@ export default {
   display: block;
   transition: transform 0.3s ease;
 }
+
 .menu-card:hover .menu-card-image img {
   transform: scale(1.04);
 }
+
 .menu-card-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 0.75rem;
 }
+
 .menu-card-head h3 {
   font-size: 1.05rem;
   margin: 0;
   color: var(--color-coffee-900);
 }
-.menu-price {
-  font-family: var(--font-display);
-  font-size: 1.1rem;
+
+.size-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: auto;
+}
+
+.size-option {
+  width: 100%;
+  border: 1px solid var(--color-cream-200);
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+
+  cursor: pointer;
+  color: var(--color-coffee-900);
+  text-align: left;
+
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.size-option:hover {
+  border-color: var(--color-sage-500);
+  background: var(--color-sage-100);
+  transform: translateY(-1px);
+}
+
+.size-details {
+  font-size: 0.85rem;
+  color: var(--color-coffee-600);
+  margin-top: 0.2rem;
+}
+
+.size-price {
+  font-weight: 700;
   color: var(--color-sage-700);
-  font-weight: 600;
   white-space: nowrap;
 }
-.menu-meta { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.btn-add { align-self: flex-start; margin-top: auto; }
 
 .toast {
   position: fixed;
@@ -342,6 +464,14 @@ export default {
   font-size: 0.95rem;
   z-index: 1000;
 }
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>
