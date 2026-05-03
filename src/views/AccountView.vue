@@ -61,14 +61,6 @@
           </select>
         </div>
 
-        <div class="toolbar-group">
-          <label class="toolbar-label">Sort by</label>
-          <select v-model="sortBy" class="filter-control">
-            <option value="city_asc">City A-Z</option>
-            <option value="city_desc">City Z-A</option>
-          </select>
-        </div>
-
         <div class="toolbar-group toolbar-actions">
           <label class="toolbar-label invisible-label">.</label>
           <button class="btn btn-ghost btn-small" @click="resetMapFilters">
@@ -182,7 +174,6 @@ export default {
 
       cityQuery: '',
       selectedState: '',
-      sortBy: 'city_asc',
       states: US_STATES,
 
       tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -210,24 +201,19 @@ export default {
     filteredLocations() {
       const query = this.cityQuery.trim().toLowerCase();
 
-      return this.locations
-        .filter(location => {
-          if (!location.open_for_business) return false;
+      return this.locations.filter(location => {
+        if (!location.open_for_business) return false;
 
-          if (query && !(location.city || '').toLowerCase().includes(query)) {
-            return false;
-          }
+        if (query && !(location.city || '').toLowerCase().includes(query)) {
+          return false;
+        }
 
-          if (this.selectedState && location.state !== this.selectedState) {
-            return false;
-          }
+        if (this.selectedState && location.state !== this.selectedState) {
+          return false;
+        }
 
-          return true;
-        })
-        .sort((a, b) => {
-          const result = (a.city || '').localeCompare(b.city || '');
-          return this.sortBy === 'city_desc' ? -result : result;
-        });
+        return true;
+      });
     }
   },
 
@@ -266,7 +252,6 @@ export default {
     resetMapFilters() {
       this.cityQuery = '';
       this.selectedState = '';
-      this.sortBy = 'city_asc';
     },
 
     goToHomeStore() {
@@ -432,7 +417,7 @@ export default {
 
 .map-home-button {
   position: absolute;
-  top: 250px;
+  top: 185px;
   left: 12px;
 
   width: 46px;
