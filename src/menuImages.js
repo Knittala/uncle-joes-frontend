@@ -20,6 +20,8 @@ import herbalTea from './assets/menu/herbal-tea.png';
 import hotChocolate from './assets/menu/hot-chocolate.png';
 import icedCoffee from './assets/menu/iced-coffee.png';
 import latte from './assets/menu/latte.png';
+import mocha from './assets/menu/mocha.png';
+
 
 const IMAGE_MAP = {
   "uncle joe's black tea": blackTea,
@@ -34,7 +36,7 @@ const IMAGE_MAP = {
   // Mocha shares the latte image as a sensible visual fallback until a
   // dedicated mocha photo is added. Replace this with a mocha import when
   // the image is available.
-  "uncle joe's mocha": latte
+  "uncle joe's mocha": mocha
 };
 
 export function getMenuImage(name) {
