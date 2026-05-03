@@ -51,6 +51,9 @@
         <h2 class="menu-group-title">{{ category }}</h2>
         <div class="menu-grid">
           <article v-for="item in items" :key="item.id" class="menu-card">
+            <div v-if="getMenuImage(item.name)" class="menu-card-image">
+              <img :src="getMenuImage(item.name)" :alt="item.name" loading="lazy" />
+            </div>
             <header class="menu-card-head">
               <h3>{{ item.name }}</h3>
               <span class="menu-price">${{ formatPrice(item.price) }}</span>
@@ -80,6 +83,7 @@
 <script>
 import { fetchJSON } from '../api.js';
 import { cart } from '../stores/cart';
+import { getMenuImage } from '../menuImages.js';
 
 const SIZE_ORDER = { Small: 1, Medium: 2, Large: 3 };
 
@@ -249,7 +253,8 @@ export default {
       this.toast = msg;
       clearTimeout(this._toastTimer);
       this._toastTimer = setTimeout(() => { this.toast = ''; }, 2200);
-    }
+    },
+    getMenuImage
   }
 };
 </script>
@@ -280,11 +285,28 @@ export default {
   flex-direction: column;
   gap: 0.75rem;
   transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
 }
 .menu-card:hover {
   border-color: var(--color-coffee-500);
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
+}
+.menu-card-image {
+  margin: -1.25rem -1.25rem 0;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--color-cream-200);
+}
+.menu-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+.menu-card:hover .menu-card-image img {
+  transform: scale(1.04);
 }
 .menu-card-head {
   display: flex;
