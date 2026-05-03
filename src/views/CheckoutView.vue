@@ -23,13 +23,6 @@
                 <div class="fulfillment-sub">Pay at the counter when you arrive.</div>
               </div>
             </label>
-            <label class="fulfillment-option" :class="{ active: fulfillment === 'delivery' }">
-              <input type="radio" value="delivery" v-model="fulfillment" />
-              <div>
-                <div class="fulfillment-title">Delivery</div>
-                <div class="fulfillment-sub">We'll bring it to you. Pay on arrival.</div>
-              </div>
-            </label>
           </div>
           <p class="fine-print">
             No card needed — Uncle Joe's runs a classic pay-on-arrival model for the pilot.
