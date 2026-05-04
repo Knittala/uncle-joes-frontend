@@ -12,15 +12,9 @@
         <label for="filter-category">Category</label>
         <select id="filter-category" v-model="selectedCategory">
           <option value="">All categories</option>
-          <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-        </select>
-      </div>
-
-      <div class="toolbar-group">
-        <label for="filter-size">Size</label>
-        <select id="filter-size" v-model="selectedSize">
-          <option value="">All sizes</option>
-          <option v-for="size in sizes" :key="size" :value="size">{{ size }}</option>
+          <option v-for="cat in categories" :key="cat" :value="cat">
+            {{ cat }}
+          </option>
         </select>
       </div>
 
@@ -34,17 +28,6 @@
         />
       </div>
 
-      <button
-        type="button"
-        class="btn btn-ghost"
-        @click="resetFilters"
-        :disabled="!hasActiveFilters"
-      >
-        Reset
-      </button>
-    </div>
-
-    <div class="toolbar toolbar-sort">
       <div class="toolbar-group">
         <label for="sort-by">Sort by</label>
         <select id="sort-by" v-model="sortBy">
@@ -53,6 +36,15 @@
           </option>
         </select>
       </div>
+
+      <button
+        type="button"
+        class="btn btn-ghost"
+        @click="resetFilters"
+        :disabled="!hasActiveFilters"
+      >
+        Reset
+      </button>
     </div>
 
     <div v-if="loading" class="status-note">Loading menu...</div>
@@ -70,13 +62,13 @@
         <h2 class="menu-group-title">{{ category }}</h2>
 
         <div class="menu-grid">
-          <article
-            v-for="item in items"
-            :key="item.id"
-            class="menu-card"
-          >
+          <article v-for="item in items" :key="item.id" class="menu-card">
             <div v-if="getMenuImage(item.name)" class="menu-card-image">
-              <img :src="getMenuImage(item.name)" :alt="item.name" loading="lazy" />
+              <img
+                :src="getMenuImage(item.name)"
+                :alt="item.name"
+                loading="lazy"
+              />
             </div>
 
             <header class="menu-card-head">
@@ -180,7 +172,6 @@ export default {
       loading: true,
       error: null,
       selectedCategory: '',
-      selectedSize: '',
       searchQuery: '',
       sortBy: DEFAULT_SORT,
       sortOptions: SORT_OPTIONS,
@@ -192,13 +183,6 @@ export default {
     categories() {
       const set = new Set(this.items.map(i => i.category).filter(Boolean));
       return Array.from(set).sort();
-    },
-
-    sizes() {
-      const set = new Set(this.items.map(i => i.size).filter(Boolean));
-      return Array.from(set).sort(
-        (a, b) => (SIZE_ORDER[a] || 99) - (SIZE_ORDER[b] || 99)
-      );
     },
 
     groupedMenuItems() {
@@ -240,13 +224,6 @@ export default {
           return false;
         }
 
-        if (
-          this.selectedSize &&
-          !item.sizes.some(size => size.size === this.selectedSize)
-        ) {
-          return false;
-        }
-
         if (q && !(item.name || '').toLowerCase().includes(q)) {
           return false;
         }
@@ -256,7 +233,8 @@ export default {
     },
 
     groupedItems() {
-      const strategy = SORT_STRATEGIES[this.sortBy] || SORT_STRATEGIES[DEFAULT_SORT];
+      const strategy =
+        SORT_STRATEGIES[this.sortBy] || SORT_STRATEGIES[DEFAULT_SORT];
       const groups = {};
 
       for (const item of this.filteredMenuItems) {
@@ -276,7 +254,6 @@ export default {
     hasActiveFilters() {
       return !!(
         this.selectedCategory ||
-        this.selectedSize ||
         this.searchQuery ||
         this.sortBy !== DEFAULT_SORT
       );
@@ -297,7 +274,6 @@ export default {
   methods: {
     resetFilters() {
       this.selectedCategory = '';
-      this.selectedSize = '';
       this.searchQuery = '';
       this.sortBy = DEFAULT_SORT;
     },
@@ -326,10 +302,6 @@ export default {
 </script>
 
 <style scoped>
-.toolbar-sort {
-  margin-top: 0.75rem;
-}
-
 .menu-groups {
   display: flex;
   flex-direction: column;
@@ -362,7 +334,7 @@ export default {
   transition:
     border-color 0.15s ease,
     transform 0.15s ease,
-    box-shadow 0.15s ease;
+    box-shadow 0.30s ease;
   overflow: hidden;
 }
 
@@ -391,19 +363,6 @@ export default {
   transform: scale(1.04);
 }
 
-.menu-card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.75rem;
-}
-
-.menu-card-head h3 {
-  font-size: 1.05rem;
-  margin: 0;
-  color: var(--color-coffee-900);
-}
-
 .size-list {
   display: flex;
   flex-direction: column;
@@ -430,25 +389,19 @@ export default {
   transition:
     border-color 0.15s ease,
     background 0.15s ease,
-    transform 0.15s ease;
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .size-option:hover {
   border-color: var(--color-sage-500);
   background: var(--color-sage-100);
   transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
 }
 
-.size-details {
-  font-size: 0.85rem;
-  color: var(--color-coffee-600);
-  margin-top: 0.2rem;
-}
-
-.size-price {
-  font-weight: 700;
-  color: var(--color-sage-700);
-  white-space: nowrap;
+.size-option:active {
+  transform: scale(0.98);
 }
 
 .toast {
@@ -460,18 +413,5 @@ export default {
   color: var(--color-cream-50);
   padding: 0.75rem 1.5rem;
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  font-size: 0.95rem;
-  z-index: 1000;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 </style>
