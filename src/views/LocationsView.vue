@@ -24,7 +24,7 @@
           <label class="toolbar-label">State</label>
           <select v-model="selectedState" class="filter-control">
             <option value="">All states</option>
-            <option v-for="s in states" :key="s" :value="s">{{ s }}</option>
+            <option v-for="s in availableStates" :key="s" :value="s">{{ s }}</option>
           </select>
         </div>
 
@@ -222,6 +222,15 @@ export default {
   },
 
   computed: {
+    availableStates() {
+      const set = new Set(
+        this.locations
+          .map(loc => loc.state)
+          .filter(Boolean)
+      );
+
+      return Array.from(set).sort();
+    },
     sortedLocations() {
       let copy = [...this.locations];
 
