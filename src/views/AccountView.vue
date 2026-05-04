@@ -14,12 +14,15 @@
       <div class="account-card">
         <div class="account-card-label">Home store</div>
 
-        <div class="account-card-value" v-if="user.home_store">
-          {{ user.home_store }}
+      <div class="account-card-value" v-if="user.home_store">
+        <div>{{ homeStoreLocation?.city }}, {{ homeStoreLocation?.state }}</div>
+        <div class="account-card-muted">
+          {{ homeStoreLocation?.address || user.home_store }}
         </div>
-        <div class="account-card-value account-card-muted" v-else>
-          Not set
-        </div>
+      </div>
+      <div class="account-card-value account-card-muted" v-else>
+        Not set
+      </div>
 
         <button
           class="btn btn-secondary btn-small edit-store-btn"
@@ -88,7 +91,7 @@
         >
           <LTooltip :options="{ direction: 'top', offset: [0, -10] }">
             <div class="map-tooltip">
-              <strong>{{ location.id }}</strong><br />
+              <strong>{{ location.city + ', ' + location.state }}</strong><br />
               {{ location.address }}<br />
               {{ location.city }}, {{ location.state }}
             </div>
@@ -142,13 +145,27 @@ import { auth } from '../stores/auth';
 import { cart } from '../stores/cart';
 import { fetchJSON } from '../api';
 
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
 import {
   LMap,
   LTileLayer,
   LMarker,
   LTooltip
 } from '@vue-leaflet/vue-leaflet';
+
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow
+});
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
@@ -185,6 +202,20 @@ export default {
   computed: {
     user() {
       return auth.user || {};
+    },
+
+    homeStoreLocation() {
+      return this.locations.find(
+        location => location.id === this.user.home_store
+      );
+    },
+
+    homeStoreDisplay() {
+      if (!this.user.home_store) return 'Not set';
+
+      if (!this.homeStoreLocation) return this.user.home_store;
+
+      return `${this.homeStoreLocation.city}, ${this.homeStoreLocation.state}\n${this.homeStoreLocation.address}`;
     },
 
     availableStates() {
@@ -234,6 +265,7 @@ export default {
           )
           .map(location => ({
             id: location.id,
+            name: location.name,
             lat: Number(location.location_map_lat),
             lng: Number(location.location_map_lng),
             city: location.city,
@@ -271,17 +303,27 @@ export default {
     },
 
     async confirmStore(location) {
+      const memberId = this.user.id || this.user.member_id;
+
+      if (!memberId) {
+        alert('Could not find your member ID. Please sign in again.');
+        return;
+      }
+
       const confirmed = window.confirm(
-        `Set ${location.id} as your home store?`
+        `Set ${location.city + ', ' + location.state + ' ' + location.address} as your home store?`
       );
 
       if (!confirmed) return;
 
       try {
         await fetchJSON(
-          `/update_profile/${this.user.id}/home_store`,
+          `/update_profile/${memberId}/home_store`,
           {
             method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
               home_store: location.id
             })
