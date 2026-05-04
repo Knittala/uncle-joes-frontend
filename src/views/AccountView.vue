@@ -459,7 +459,7 @@ export default {
 
 .map-home-button {
   position: absolute;
-  top: 185px;
+  top: 250px;
   left: 12px;
 
   width: 46px;
